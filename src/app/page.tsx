@@ -19,7 +19,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <header className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border">
-          <h1 className="text-xl font-bold text-slate-800">Portal de Serviços ST</h1>
+          <h1 className="text-xl font-bold text-slate-800">Portal de Serviços - ST</h1>
           <nav className="flex gap-2">
             <Button 
               variant={view === 'user' ? 'default' : 'outline'} 
