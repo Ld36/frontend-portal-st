@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -49,6 +49,10 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
   const [fileToRemove, setFileToRemove] = useState<'obrigatorio' | 'opcional' | null>(null);
   const [tipo, setTipo] = useState<'fisica' | 'juridica' | 'estrangeira'>('juridica');
   const [files, setFiles] = useState<{ obrigatorio?: File; opcional?: File }>({});
+  const [requiredInputKey, setRequiredInputKey] = useState(0);
+  const [optionalInputKey, setOptionalInputKey] = useState(0);
+  const requiredFileInputRef = useRef<HTMLInputElement | null>(null);
+  const optionalFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const openInfoModal = (title: string, description: string) => {
     setInfoTitle(title);
@@ -64,6 +68,17 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
   const confirmRemoveFile = () => {
     if (!fileToRemove) return;
     setFiles((prev) => ({ ...prev, [fileToRemove]: undefined }));
+
+    if (fileToRemove === 'obrigatorio') {
+      if (requiredFileInputRef.current) requiredFileInputRef.current.value = '';
+      setRequiredInputKey((prev) => prev + 1);
+    }
+
+    if (fileToRemove === 'opcional') {
+      if (optionalFileInputRef.current) optionalFileInputRef.current.value = '';
+      setOptionalInputKey((prev) => prev + 1);
+    }
+
     setShowRemoveFileModal(false);
     setFileToRemove(null);
   };
@@ -279,7 +294,12 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
 
               <div className="space-y-2">
                 <Label>Anexar Documento Comprobatório</Label>
-                <Input type="file" onChange={(e) => setFiles((prev) => ({ ...prev, obrigatorio: e.target.files?.[0] }))} />
+                <Input
+                  key={requiredInputKey}
+                  ref={requiredFileInputRef}
+                  type="file"
+                  onChange={(e) => setFiles((prev) => ({ ...prev, obrigatorio: e.target.files?.[0] }))}
+                />
                 {files.obrigatorio && (
                   <div className="flex items-center justify-between rounded-md border p-2 text-sm">
                     <span className="truncate pr-3">{files.obrigatorio.name}</span>
@@ -292,7 +312,12 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
 
               <div className="space-y-2">
                 <Label>Anexar Documento Opcional</Label>
-                <Input type="file" onChange={(e) => setFiles((prev) => ({ ...prev, opcional: e.target.files?.[0] }))} />
+                <Input
+                  key={optionalInputKey}
+                  ref={optionalFileInputRef}
+                  type="file"
+                  onChange={(e) => setFiles((prev) => ({ ...prev, opcional: e.target.files?.[0] }))}
+                />
                 {files.opcional && (
                   <div className="flex items-center justify-between rounded-md border p-2 text-sm">
                     <span className="truncate pr-3">{files.opcional.name}</span>
