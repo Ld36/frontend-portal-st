@@ -73,7 +73,8 @@ export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogo
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Documento (Criptografado)</TableHead>
+              <TableHead className="w-[320px]">Empresa</TableHead>
+              <TableHead className="hidden md:table-cell">Documento (Criptografado)</TableHead>
               <TableHead>Perfil</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -82,7 +83,13 @@ export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogo
           <TableBody>
             {empresas.map((emp: any) => (
               <TableRow key={emp.id}>
-                <TableCell className="font-mono text-xs">{emp.documento}</TableCell>
+                <TableCell className="font-medium">
+                  <div>
+                    {emp.nome_fantasia || emp.nomeFantasia || emp.razao_social || emp.razaoSocial || emp.nome || 'Não informado'}
+                    <p className="mt-1 font-mono text-xs text-slate-500 break-all md:hidden">{emp.documento}</p>
+                  </div>
+                </TableCell>
+                <TableCell className="font-mono text-xs hidden md:table-cell">{emp.documento}</TableCell>
                 <TableCell>{emp.perfil}</TableCell>
                 <TableCell>
                   <Badge variant={emp.status === 'APROVADO' ? 'default' : emp.status === 'PENDENTE' ? 'secondary' : 'destructive'}>

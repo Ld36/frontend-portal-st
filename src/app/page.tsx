@@ -8,7 +8,8 @@ import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
 import { StatusCheck } from '@/components/StatusCheck'; // Importe o componente novo
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Rocket, Search } from 'lucide-react';
+import { Rocket, Search, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 function HomeContent() {
 
@@ -16,6 +17,7 @@ function HomeContent() {
   const [view, setView] = useState<'landing' | 'form' | 'admin' | 'status'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   
   const searchParams = useSearchParams();
 
@@ -40,9 +42,20 @@ function HomeContent() {
   return (
     <div className="flex min-h-screen bg-slate-100">
       {/* A Sidebar agora é GLOBAL, ela nunca some */}
-      <Sidebar currentView={view} onViewChange={handleViewChange} isAdmin={isAuthenticated} />
+      <Sidebar
+        currentView={view}
+        onViewChange={handleViewChange}
+        isAdmin={isAuthenticated}
+        mobileOpen={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
+      />
       
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 p-3 md:p-8 overflow-y-auto md:ml-0">
+        <div className="md:hidden mb-3">
+          <Button variant="outline" size="icon" onClick={() => setMobileSidebarOpen(true)}>
+            <Menu size={18} />
+          </Button>
+        </div>
         <div className="max-w-6xl mx-auto">
           
           {/* VISÃO: Landing Page (Menu Inicial do PDF) */}
