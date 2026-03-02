@@ -4,9 +4,7 @@ import { useState } from 'react';
 import { useForm, Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
 import { api } from '@/services/api';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +22,14 @@ const formSchema = z.object({
   razao_social: z.string().optional(),
   nome: z.string().optional(),
   nome_fantasia: z.string().min(1, "Nome fantasia é obrigatório"),
+}).superRefine((values, ctx) => {
+  if (values.tipo_pessoa === 'fisica' && !values.nome?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['nome'], message: 'Nome é obrigatório' });
+  }
+
+  if ((values.tipo_pessoa === 'juridica' || values.tipo_pessoa === 'estrangeira') && !values.razao_social?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['razao_social'], message: 'Razão Social é obrigatória' });
+  }
 });
 
 type CompanyFormValues = z.infer<typeof formSchema>;
@@ -33,12 +39,34 @@ interface CompanyFormProps {
 }
 
 export function CompanyForm({ onSuccess }: CompanyFormProps) {
-  const router = useRouter();
-  const { toast } = useToast();
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showRemoveFileModal, setShowRemoveFileModal] = useState(false);
+  const [infoTitle, setInfoTitle] = useState('');
+  const [infoDescription, setInfoDescription] = useState('');
+  const [fileToRemove, setFileToRemove] = useState<'obrigatorio' | 'opcional' | null>(null);
   const [tipo, setTipo] = useState<'fisica' | 'juridica' | 'estrangeira'>('juridica');
-  const [files, setFiles] = useState<{ obrigatorio?: File }>({});
+  const [files, setFiles] = useState<{ obrigatorio?: File; opcional?: File }>({});
+
+  const openInfoModal = (title: string, description: string) => {
+    setInfoTitle(title);
+    setInfoDescription(description);
+    setShowInfoModal(true);
+  };
+
+  const requestRemoveFile = (type: 'obrigatorio' | 'opcional') => {
+    setFileToRemove(type);
+    setShowRemoveFileModal(true);
+  };
+
+  const confirmRemoveFile = () => {
+    if (!fileToRemove) return;
+    setFiles((prev) => ({ ...prev, [fileToRemove]: undefined }));
+    setShowRemoveFileModal(false);
+    setFileToRemove(null);
+  };
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(formSchema) as Resolver<CompanyFormValues>,
@@ -55,27 +83,101 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
 
   async function onSubmit(values: CompanyFormValues) {
     if (!files.obrigatorio) {
-      return toast({ 
-        variant: "destructive", 
-        title: "Erro [M05]", 
-        description: "O anexo do documento comprobatório é obrigatório." 
-      });
+      openInfoModal('Aviso', 'É necessário enviar os arquivos obrigatórios para prosseguir.');
+      return;
+    }
+
+    const onlyDigits = (values.documento || '').replace(/\D/g, '');
+    if (values.tipo_pessoa === 'juridica' && onlyDigits.length !== 14) {
+      openInfoModal('Atenção', 'CNPJ inválido.');
+      return;
+    }
+
+    if (values.tipo_pessoa === 'fisica' && onlyDigits.length !== 11) {
+      openInfoModal('Atenção', 'CPF inválido.');
+      return;
+    }
+
+    const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+    const requiredFileName = files.obrigatorio.name.toLowerCase();
+    const requiredValidExtension = validExtensions.some((ext) => requiredFileName.endsWith(ext));
+
+    if (!requiredValidExtension) {
+      openInfoModal('Arquivo inválido', 'São válidos somente arquivos do tipo: pdf, png, jpg ou jpeg.');
+      return;
+    }
+
+    if (files.obrigatorio.size > MAX_FILE_SIZE) {
+      openInfoModal('Arquivo inválido', 'Tamanho de arquivo não suportado.');
+      return;
+    }
+
+    if (files.opcional) {
+      const optionalFileName = files.opcional.name.toLowerCase();
+      const optionalValidExtension = validExtensions.some((ext) => optionalFileName.endsWith(ext));
+
+      if (!optionalValidExtension) {
+        openInfoModal('Arquivo inválido', 'São válidos somente arquivos do tipo: pdf, png, jpg ou jpeg.');
+        return;
+      }
+
+      if (files.opcional.size > MAX_FILE_SIZE) {
+        openInfoModal('Arquivo inválido', 'Tamanho de arquivo não suportado.');
+        return;
+      }
+
+      const isDuplicateFile =
+        files.opcional.name === files.obrigatorio.name &&
+        files.opcional.size === files.obrigatorio.size &&
+        files.opcional.lastModified === files.obrigatorio.lastModified;
+
+      if (isDuplicateFile) {
+        openInfoModal('Arquivo duplicado', 'Arquivo duplicado.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
     const formData = new FormData();
-    Object.entries(values).forEach(([key, value]) => formData.append(key, String(value)));
+
+    const payload: Record<string, string | boolean> = {
+      tipo_pessoa: values.tipo_pessoa,
+      documento: values.documento,
+      perfil: values.perfil,
+      faturamento_direto: values.faturamento_direto,
+      nome_fantasia: values.nome_fantasia,
+    };
+
+    if (values.tipo_pessoa === 'fisica') {
+      payload.nome = values.nome?.trim() || '';
+    } else {
+      payload.razao_social = values.razao_social?.trim() || '';
+      payload.nome = values.razao_social?.trim() || '';
+    }
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (typeof value === 'string' && !value.trim()) return;
+      formData.append(key, String(value));
+    });
+
     formData.append('documento_obrigatorio', files.obrigatorio);
+    if (files.opcional) {
+      formData.append('documento_opcional', files.opcional);
+    }
 
     try {
       await api.post('/empresas', formData);
       setShowSuccessModal(true);
     } catch (error: any) {
-      toast({ 
-        variant: "destructive", 
-        title: "Erro no registro", 
-        description: error.response?.data?.message || "Erro ao processar cadastro." 
-      });
+      const backendMessage = Array.isArray(error.response?.data?.message)
+        ? error.response.data.message.join(' ')
+        : String(error.response?.data?.message || 'Erro ao processar cadastro.');
+
+      if (backendMessage.toLowerCase().includes('perfil') && backendMessage.toLowerCase().includes('encontr')) {
+        openInfoModal('Atenção', 'Ocorreu um erro ao encontrar o perfil.');
+      } else {
+        openInfoModal('Atenção', backendMessage);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -177,7 +279,28 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
 
               <div className="space-y-2">
                 <Label>Anexar Documento Comprobatório</Label>
-                <Input type="file" onChange={(e) => setFiles({ obrigatorio: e.target.files?.[0] })} />
+                <Input type="file" onChange={(e) => setFiles((prev) => ({ ...prev, obrigatorio: e.target.files?.[0] }))} />
+                {files.obrigatorio && (
+                  <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                    <span className="truncate pr-3">{files.obrigatorio.name}</span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => requestRemoveFile('obrigatorio')}>
+                      Remover
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Anexar Documento Opcional</Label>
+                <Input type="file" onChange={(e) => setFiles((prev) => ({ ...prev, opcional: e.target.files?.[0] }))} />
+                {files.opcional && (
+                  <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                    <span className="truncate pr-3">{files.opcional.name}</span>
+                    <Button type="button" size="sm" variant="outline" onClick={() => requestRemoveFile('opcional')}>
+                      Remover
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Button type="submit" className="w-full h-12 text-lg font-bold" disabled={isSubmitting}>
@@ -192,16 +315,40 @@ export function CompanyForm({ onSuccess }: CompanyFormProps) {
       <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-green-600 text-xl">Sucesso! [M01]</DialogTitle>
+            <DialogTitle className="text-green-600 text-xl">Sucesso</DialogTitle>
             <DialogDescription className="text-base py-4">
-              O cadastro da empresa foi registrado com sucesso em nosso sistema.
-              Sua solicitação aguarda agora a aprovação da equipe interna.
+              Empresa cadastrada com sucesso.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={handleCloseModal} className="w-full bg-green-600 hover:bg-green-700">
-              Fechar e ir para o Dashboard
+              Fechar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showInfoModal} onOpenChange={setShowInfoModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{infoTitle}</DialogTitle>
+            <DialogDescription className="text-base py-2">{infoDescription}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowInfoModal(false)} className="w-full">Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRemoveFileModal} onOpenChange={setShowRemoveFileModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover arquivo</DialogTitle>
+            <DialogDescription className="text-base py-2">Deseja realmente remover este arquivo?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRemoveFileModal(false)}>Cancelar</Button>
+            <Button onClick={confirmRemoveFile}>Confirmar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

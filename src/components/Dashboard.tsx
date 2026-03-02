@@ -6,12 +6,21 @@ import { Plus, RefreshCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogout: () => void }) {
   const [empresas, setEmpresas] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [actionType, setActionType] = useState<'aprovar' | 'reprovar' | null>(null);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<any>(null);
+  const [actionInput, setActionInput] = useState('');
+  const [feedbackTitle, setFeedbackTitle] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
   const { toast } = useToast();
 
   const loadEmpresas = async () => {
@@ -36,18 +45,35 @@ export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogo
 
   useEffect(() => { loadEmpresas(); }, []);
 
-  const handleAction = async (id: number, action: 'aprovar' | 'reprovar') => {
-    const promptMsg = action === 'aprovar' ? "Nome do responsável externo:" : "Motivo da reprovação:";
-    const input = prompt(promptMsg);
-    if (!input) return;
+  const openActionModal = (empresa: any, action: 'aprovar' | 'reprovar') => {
+    setSelectedEmpresa(empresa);
+    setActionType(action);
+    setActionInput('');
+    setActionModalOpen(true);
+  };
+
+  const handleAction = async () => {
+    if (!selectedEmpresa || !actionType) return;
+    if (!actionInput.trim()) {
+      setFeedbackTitle('Atenção');
+      setFeedbackMessage(actionType === 'aprovar' ? 'Informe o nome do responsável externo.' : 'Informe o motivo da reprovação.');
+      setFeedbackModalOpen(true);
+      return;
+    }
 
     try {
-      const body = action === 'aprovar' ? { responsavel_externo: input } : { motivo: input };
-      await api.patch(`/empresas/${id}/${action}`, body);
-      toast({ title: "Sucesso", description: `Empresa ${action}ada com sucesso!` });
+      const body = actionType === 'aprovar' ? { responsavel_externo: actionInput } : { motivo: actionInput };
+      await api.patch(`/empresas/${selectedEmpresa.id}/${actionType}`, body);
+      setActionModalOpen(false);
+      setFeedbackTitle('Sucesso');
+      setFeedbackMessage(actionType === 'aprovar' ? 'Empresa aprovada com sucesso.' : 'Empresa reprovada com sucesso.');
+      setFeedbackModalOpen(true);
       refreshEmpresas();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Erro", description: err.response?.data?.message });
+      setActionModalOpen(false);
+      setFeedbackTitle('Atenção');
+      setFeedbackMessage(err.response?.data?.message || 'Não foi possível concluir a operação.');
+      setFeedbackModalOpen(true);
     }
   };
 
@@ -99,8 +125,8 @@ export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogo
                 <TableCell className="text-right">
                   {emp.status === 'PENDENTE' && (
                     <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 justify-end">
-                      <Button size="sm" variant="outline" className="text-green-600 border-green-600 text-xs" onClick={() => handleAction(emp.id, 'aprovar')}>Aprovar</Button>
-                      <Button size="sm" variant="outline" className="text-red-600 border-red-600 text-xs" onClick={() => handleAction(emp.id, 'reprovar')}>Reprovar</Button>
+                      <Button size="sm" variant="outline" className="text-green-600 border-green-600 text-xs" onClick={() => openActionModal(emp, 'aprovar')}>Aprovar</Button>
+                      <Button size="sm" variant="outline" className="text-red-600 border-red-600 text-xs" onClick={() => openActionModal(emp, 'reprovar')}>Reprovar</Button>
                     </div>
                   )}
                 </TableCell>
@@ -109,6 +135,44 @@ export function Dashboard({ onAddNew, onLogout }: { onAddNew: () => void; onLogo
           </TableBody>
         </Table>
       </CardContent>
+
+      <Dialog open={actionModalOpen} onOpenChange={setActionModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {actionType === 'reprovar'
+                ? `Reprovar Empresa - ${selectedEmpresa?.nome_fantasia || selectedEmpresa?.nomeFantasia || selectedEmpresa?.razao_social || selectedEmpresa?.razaoSocial || selectedEmpresa?.nome || ''}`
+                : `Aprovar Empresa - ${selectedEmpresa?.nome_fantasia || selectedEmpresa?.nomeFantasia || selectedEmpresa?.razao_social || selectedEmpresa?.razaoSocial || selectedEmpresa?.nome || ''}`}
+            </DialogTitle>
+            <DialogDescription>
+              {actionType === 'aprovar' ? 'Informe o nome do responsável externo.' : 'Informe o motivo da reprovação.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder={actionType === 'aprovar' ? 'Nome do responsável externo' : 'Motivo da reprovação'}
+            value={actionInput}
+            onChange={(e) => setActionInput(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActionModalOpen(false)}>Voltar</Button>
+            <Button onClick={handleAction} className={actionType === 'reprovar' ? 'bg-red-600 hover:bg-red-700' : ''}>
+              {actionType === 'reprovar' ? 'Reprovar' : 'Aprovar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{feedbackTitle}</DialogTitle>
+            <DialogDescription className="text-base py-2">{feedbackMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setFeedbackModalOpen(false)} className="w-full">Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
