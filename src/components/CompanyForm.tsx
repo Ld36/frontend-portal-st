@@ -28,7 +28,11 @@ const formSchema = z.object({
 
 type CompanyFormValues = z.infer<typeof formSchema>;
 
-export function CompanyForm() {
+interface CompanyFormProps {
+  onSuccess?: () => void;
+}
+
+export function CompanyForm({ onSuccess }: CompanyFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,7 +69,7 @@ export function CompanyForm() {
 
     try {
       await api.post('/empresas', formData);
-      setShowSuccessModal(true); 
+      setShowSuccessModal(true);
     } catch (error: any) {
       toast({ 
         variant: "destructive", 
@@ -79,7 +83,7 @@ export function CompanyForm() {
 
   const handleCloseModal = () => {
     setShowSuccessModal(false);
-    router.push('/dashboard'); 
+    onSuccess?.(); // Chama o callback para mudar para a tela de status
   };
 
   return (
@@ -191,7 +195,7 @@ export function CompanyForm() {
             <DialogTitle className="text-green-600 text-xl">Sucesso! [M01]</DialogTitle>
             <DialogDescription className="text-base py-4">
               O cadastro da empresa foi registrado com sucesso em nosso sistema.
-              Sua solicitação aguarda agora a aprovação da equipe interna [RN03].
+              Sua solicitação aguarda agora a aprovação da equipe interna.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
