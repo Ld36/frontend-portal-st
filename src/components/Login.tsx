@@ -35,7 +35,7 @@ export function Login({ onLoginSuccess }: { onLoginSuccess: (name: string) => vo
         <CardHeader className="text-center">
           <ShieldCheck className="mx-auto text-blue-600 mb-2" size={40} />
           <CardTitle>Acesso Administrativo</CardTitle>
-          <CardDescription>Use suas credenciais JWT para gerenciar homologações.</CardDescription>
+          <CardDescription>Use suas credenciais para gerenciar.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
