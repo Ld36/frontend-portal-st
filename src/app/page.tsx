@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Sidebar } from '@/components/Sidebar';
 import { CompanyForm } from '@/components/CompanyForm';
@@ -9,9 +9,10 @@ import { Login } from '@/components/Login';
 import { StatusCheck } from '@/components/StatusCheck'; // Importe o componente novo
 import { setAuthType } from '@/services/api';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Rocket, ShieldCheck, Search } from 'lucide-react';
+import { Rocket, Search } from 'lucide-react';
 
-export default function Home() {
+function HomeContent() {
+
   // 'landing' é a nossa Landing Page inicial exigida pelo PDF
   const [view, setView] = useState<'landing' | 'form' | 'admin' | 'status'>('landing');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,5 +92,13 @@ export default function Home() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center">Carregando...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }
