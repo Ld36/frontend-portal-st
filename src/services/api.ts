@@ -21,8 +21,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Se o backend retornar 401, a sessão expirou ou o token é inválido
-    if (error.response?.status === 401) {
+    const status = error.response?.status;
+    const requestUrl = String(error.config?.url || '');
+    const isLoginRequest = requestUrl.includes('/auth/login');
+
+    // Em 401 do login, mantém na tela para nova tentativa
+    if (status === 401 && !isLoginRequest) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('portal_st_token');
         window.location.href = '/'; 
