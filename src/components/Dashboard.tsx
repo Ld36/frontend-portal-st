@@ -33,12 +33,12 @@ export function Dashboard() {
   }, []);
 
   const handleAprovar = async (id: number) => {
-    const responsavel = prompt("M10: Informe o nome do responsável externo para aprovação:");
+    const responsavel = prompt("Informe o nome do responsável externo para aprovação:");
     if (!responsavel) return;
 
     try {
       await api.patch(`/empresas/${id}/aprovar`, { responsavel_externo: responsavel });
-      toast({ title: "Sucesso", description: "Empresa aprovada com sucesso! (M10)" });
+      toast({ title: "Sucesso", description: "Empresa aprovada com sucesso!" });
       loadEmpresas();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erro", description: err.response?.data?.message });
@@ -46,12 +46,12 @@ export function Dashboard() {
   };
 
   const handleReprovar = async (id: number) => {
-    const motivo = prompt("M11: Informe o motivo da reprovação:");
+    const motivo = prompt("Informe o motivo da reprovação:");
     if (!motivo) return;
 
     try {
       await api.patch(`/empresas/${id}/reprovar`, { motivo });
-      toast({ title: "Sucesso", description: "Empresa reprovada com sucesso! (M12)" });
+      toast({ title: "Sucesso", description: "Empresa reprovada com sucesso!" });
       loadEmpresas();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Erro", description: err.response?.data?.message });
@@ -61,7 +61,7 @@ export function Dashboard() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Administração de Empresas (FA03)</CardTitle>
+        <CardTitle>Administração de Empresas</CardTitle>
       </CardHeader>
       <CardContent>
         <Table>
