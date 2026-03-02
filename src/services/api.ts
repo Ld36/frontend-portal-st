@@ -6,19 +6,12 @@ export const api = axios.create({
   baseURL: apiBaseUrl,
 });
 
-export const setAuthType = (type: 'interno' | 'externo') => {
-  api.defaults.headers.common['x-actor-type'] = type;
-};
-
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('portal_st_token');
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      config.headers['x-actor-type'] = 'interno';
-    } else {
-      config.headers['x-actor-type'] = config.headers['x-actor-type'] || 'externo';
     }
   }
   return config;

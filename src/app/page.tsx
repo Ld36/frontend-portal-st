@@ -7,7 +7,6 @@ import { CompanyForm } from '@/components/CompanyForm';
 import { Dashboard } from '@/components/Dashboard';
 import { Login } from '@/components/Login';
 import { StatusCheck } from '@/components/StatusCheck'; // Importe o componente novo
-import { setAuthType } from '@/services/api';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Rocket, Search } from 'lucide-react';
 
@@ -34,7 +33,6 @@ function HomeContent() {
 
   const handleViewChange = (newView: any) => {
     setView(newView);
-    setAuthType(newView === 'admin' ? 'interno' : 'externo');
   };
 
   if (isLoading) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
