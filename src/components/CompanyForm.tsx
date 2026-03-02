@@ -144,6 +144,10 @@ export function CompanyForm() {
                         <SelectItem value="Novo usuário">Novo usuário</SelectItem>
                         <SelectItem value="Transportadora">Transportadora</SelectItem>
                         <SelectItem value="Despachante">Despachante</SelectItem>
+                        <SelectItem value="Beneficiário">Beneficiário</SelectItem>
+                        <SelectItem value="Consignatário">Consignatário</SelectItem>
+                        <SelectItem value="Armador">Armador</SelectItem>
+                        <SelectItem value="Agente de Carga">Agente de Carga</SelectItem>
                       </SelectContent>
                     </Select>
                   </FormItem>
